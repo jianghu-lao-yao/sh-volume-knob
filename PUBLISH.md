@@ -13,7 +13,7 @@
 cd ~/Desktop/harness/dsh-volume-knob
 
 # 本地已初始化并提交好；只需加远端、推送
-git remote add origin https://github.com/<你的用户名>/dsh-volume-knob.git
+git remote add origin https://github.com/hunshi-lao-yao/dsh-volume-knob.git
 git branch -M main
 git push -u origin main
 ```
@@ -38,12 +38,12 @@ gh repo create dsh-volume-knob --public --source=. --remote=origin --push \
 
 - ⚠️ **仓库必须创建满 1 天**才能通过 CI（自动检查，专门过滤"PR 前几分钟才建好"的仓库）。
   所以今天先建仓库推送，明天再提 PR。
-- 提交方式：fork 那个仓库 → 新增文件 `data/plugins/<你的用户名>__dsh-volume-knob.yml`
-  → 开 PR。内容就是本仓库根目录的 `catalog-entry.yml`（记得把 `<owner>` 换成你的用户名）：
+- 提交方式：fork 那个仓库 → 新增文件 `data/plugins/hunshi-lao-yao__dsh-volume-knob.yml`
+  → 开 PR。内容就是本仓库根目录的 `catalog/hunshi-lao-yao__dsh-volume-knob.yml`（记得把 `hunshi-lao-yao` 换成你的用户名）：
 
 ```yaml
-url: https://github.com/<你的用户名>/dsh-volume-knob
-name: <你的用户名>/dsh-volume-knob
+url: https://github.com/hunshi-lao-yao/dsh-volume-knob
+name: hunshi-lao-yao/dsh-volume-knob
 category: voice
 description:
   en: Speaker button beside the composer microphone — one click reads the newest agent reply aloud through dsh-tts (browser voice as fallback), the next click stops, and a press-then-drag-up opens a vertical mixer for in-page media volume and system output volume.
@@ -69,7 +69,7 @@ description:
 列表合并后，`dsh-market` 会自动同步目录，用户就能在**设置 → 插件市场**里搜到并一键安装；命令行则是：
 
 ```sh
-dsh plugin --profile web add github:<你的用户名>/dsh-volume-knob
+dsh plugin --profile web add github:hunshi-lao-yao/dsh-volume-knob
 ```
 
 ## 5.（可选）发到 npm

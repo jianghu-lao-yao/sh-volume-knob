@@ -40,5 +40,13 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hunshi-lao-yao/dsh-volume-knob.git"
+  },
+  "homepage": "https://github.com/hunshi-lao-yao/dsh-volume-knob#readme",
+  "bugs": {
+    "url": "https://github.com/hunshi-lao-yao/dsh-volume-knob/issues"
   }
 }
