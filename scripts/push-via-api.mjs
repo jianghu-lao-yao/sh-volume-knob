@@ -8,21 +8,29 @@
  * so nothing is lost and no git transport is needed.
  *
  * Usage:
- *   GITHUB_TOKEN=ghp_xxx node scripts/push-via-api.mjs              # owner/repo from `origin`
- *   GITHUB_TOKEN=ghp_xxx node scripts/push-via-api.mjs you/yourrepo
- *   node scripts/push-via-api.mjs --dry-run                        # local side only, no network
+ *   node scripts/push-via-api.mjs                    # owner/repo from `origin`; prompts for the token
+ *   node scripts/push-via-api.mjs you/yourrepo
+ *   GITHUB_TOKEN=ghp_xxx node scripts/push-via-api.mjs
+ *   node scripts/push-via-api.mjs --token-file ~/.dsh/github-token
+ *   node scripts/push-via-api.mjs --dry-run          # local side only, no network, no token
+ *
+ * The token is looked up in this order: --token-file, $GITHUB_TOKEN / $GH_TOKEN,
+ * ~/.dsh/github-token, ~/.github-token, then an interactive hidden prompt.
  *
  * Token scopes: classic token needs `repo`; fine-grained needs
  *   Administration: Read and write (create the repo) + Contents: Read and write.
  */
 import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
 const API = 'https://api.github.com'
-const args = process.argv.slice(2)
-const DRY = args.includes('--dry-run')
-const FORCE = args.includes('--force')
-const slugArg = args.find((a) => !a.startsWith('--'))
-const TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
+const argv = process.argv.slice(2)
+const DRY = argv.includes('--dry-run')
+const FORCE = argv.includes('--force')
+const tokenFileArg = argv.includes('--token-file') ? argv[argv.indexOf('--token-file') + 1] : null
+const slugArg = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--token-file')
 
 const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 1 << 28 })
 const gitTrim = (...a) => git(...a).trim()
@@ -32,8 +40,42 @@ function die (message) {
   process.exit(1)
 }
 
-async function api (method, path, body) {
-  const res = await fetch(`${API}${path}`, {
+function tokenFromFile (file) {
+  try {
+    const first = readFileSync(file, 'utf8').split('\n')[0].trim()
+    return first || null
+  } catch { return null }
+}
+
+/** Hidden prompt on the controlling terminal — the token never reaches the shell history. */
+function tokenFromPrompt () {
+  if (!process.stdout.isTTY) return null
+  try {
+    const out = execFileSync('bash', ['-c', 'read -rs -p "GitHub token (输入不回显，回车确认): " t </dev/tty && printf %s "$t"'], {
+      stdio: ['inherit', 'pipe', 'inherit'],
+    })
+    process.stdout.write('\n')
+    const value = out.toString().trim()
+    return value || null
+  } catch { return null }
+}
+
+async function resolveToken () {
+  const fromEnv = (process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '').trim()
+  if (fromEnv) return { token: fromEnv, source: 'env' }
+  for (const file of [tokenFileArg, path.join(os.homedir(), '.dsh', 'github-token'), path.join(os.homedir(), '.github-token')].filter(Boolean)) {
+    const found = tokenFromFile(file)
+    if (found) return { token: found, source: file }
+  }
+  const prompted = tokenFromPrompt()
+  if (prompted) return { token: prompted, source: 'prompt' }
+  return null
+}
+
+let TOKEN = null
+
+async function api (method, route, body) {
+  const res = await fetch(`${API}${route}`, {
     method,
     headers: {
       authorization: `Bearer ${TOKEN}`,
@@ -47,12 +89,23 @@ async function api (method, path, body) {
   const text = await res.text()
   let data = null
   try { data = text ? JSON.parse(text) : null } catch { data = text }
-  if (!res.ok) throw new Error(`${method} ${path} → ${res.status} ${typeof data === 'string' ? data : JSON.stringify(data)}`.slice(0, 600))
+  if (!res.ok) throw new Error(`${method} ${route} → ${res.status} ${typeof data === 'string' ? data : JSON.stringify(data)}`.slice(0, 600))
   return data
 }
 
 // ---------------------------------------------------------------- local side
-if (!DRY && !TOKEN) die('set GITHUB_TOKEN (classic token with `repo`, or fine-grained with Administration + Contents write)')
+if (!DRY) {
+  const resolved = await resolveToken()
+  if (!resolved) {
+    die('no GitHub token found.\n'
+      + '  • run again and paste it at the hidden prompt, or\n'
+      + '  • save it to ~/.dsh/github-token, or\n'
+      + '  • export GITHUB_TOKEN=ghp_…\n'
+      + '  classic token needs the `repo` scope; fine-grained needs Administration + Contents write.')
+  }
+  TOKEN = resolved.token
+  console.log(`▶ token   : ${resolved.source === 'env' ? '$GITHUB_TOKEN' : resolved.source}`)
+}
 
 const branch = gitTrim('rev-parse', '--abbrev-ref', 'HEAD')
 if (branch !== 'main') console.warn(`! current branch is "${branch}" (expected "main") — pushing it as refs/heads/${branch}`)
