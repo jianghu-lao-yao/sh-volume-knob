@@ -64,22 +64,43 @@ description:
 | 描述与实际功能一致、不含营销词 | ✅ 逐条对照过代码 |
 | 分类贴合 | `voice`（朗读 + 音量） |
 
-## 4. 收录之后
+## 5. 发到 npm（要「不带 github:」的安装命令就靠这步）
 
-列表合并后，`dsh-market` 会自动同步目录，用户就能在**设置 → 插件市场**里搜到并一键安装；命令行则是：
+`dsh plugin --profile web add dsh-volume-knob` 这种短命令是**从 npm 解析**的，所以必须发一次 npm。
 
-```sh
-dsh plugin --profile web add github:hunshi-lao-yao/dsh-volume-knob
-```
-
-## 5.（可选）发到 npm
-
-想让安装命令变成不带 `github:` 前缀的 `dsh plugin add dsh-volume-knob`，就需要发布到 npm：
+**名字已确认可用**：`dsh-volume-knob` 在 registry.npmjs.org 上是 404（未被占用）。
 
 ```sh
-npm login
+cd ~/Desktop/harness/dsh-volume-knob
+
+npm login                       # 网页登录或粘贴 token
+npm whoami                      # 确认已登录
+
+npm pack --dry-run              # 预演：应只打包 6 个文件
+#   LICENSE  README.md  cordis.patch.yml  lib/client.js  lib/index.js  package.json
+
 npm publish --access public
 ```
 
-发布前把 `package.json` 的 `version` 管好，并确认 `files` 里包含 `lib/`、`cordis.patch.yml`。
-（仓库里 `private` 字段已经去掉了，可以直接发布。）
+发布后立刻可用：
+
+```sh
+dsh plugin --profile web add dsh-volume-knob
+```
+
+说明：
+
+- 包名没占用，但**先发先得**——想占住就尽早 `npm publish`。
+- `private` 字段已从 `package.json` 去掉；`files` 只列了 `lib/`、`cordis.patch.yml`、`README.md`、`LICENSE`（`PUBLISH.md`、`catalog/`、`.gitignore` 不会进 tarball）。
+- 后续更新：改 `version`（如 `0.4.1`）→ `git commit` → `npm publish`。
+- npm 上发了之后，市场条目里的安装命令会自动变成短的 `dsh plugin --profile web add dsh-volume-knob`（第 3 步的收录条目本身不用改，仍只交那一个 YAML）。
+
+## 6. 收录之后
+
+列表合并后，`dsh-market` 会自动同步目录，用户就能在**设置 → 插件市场**里搜到并一键安装：
+
+```sh
+dsh plugin --profile web add dsh-volume-knob          # 已发 npm
+dsh plugin --profile web add github:hunshi-lao-yao/dsh-volume-knob   # 未发 npm 时的等价写法
+```
+
