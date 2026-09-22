@@ -1,19 +1,19 @@
-# 发布指南 / Publishing dsh-volume-knob
+# 发布指南 / Publishing sh-volume-knob
 
-作者名用 **混世老妖**，仓库名用 `dsh-volume-knob`。
-（GitHub 用户名只允许字母、数字和连字符，所以「混世老妖」写在 `package.json` 的 `author`、`LICENSE` 和 README 抬头——不可能是账号名。）
+作者名用 **江湖老妖**，仓库名用 `sh-volume-knob`。
+（GitHub 用户名只允许字母、数字和连字符，所以「江湖老妖」写在 `package.json` 的 `author`、`LICENSE` 和 README 抬头——不可能是账号名。）
 
 ---
 
 ## 1. 建仓库并推送
 
-先在 GitHub 网页上新建一个**空**仓库 `dsh-volume-knob`（不要勾 README/.gitignore），然后：
+先在 GitHub 网页上新建一个**空**仓库 `sh-volume-knob`（不要勾 README/.gitignore），然后：
 
 ```sh
-cd ~/Desktop/harness/dsh-volume-knob
+cd ~/Desktop/harness/sh-volume-knob
 
 # 本地已初始化并提交好；只需加远端、推送
-git remote add origin https://github.com/hunshi-lao-yao/dsh-volume-knob.git
+git remote add origin https://github.com/jianghu-lao-yao/sh-volume-knob.git
 git branch -M main
 git push -u origin main
 ```
@@ -21,7 +21,7 @@ git push -u origin main
 有 `gh` CLI 的话更快：
 
 ```sh
-gh repo create dsh-volume-knob --public --source=. --remote=origin --push \
+gh repo create sh-volume-knob --public --source=. --remote=origin --push \
   --description "Read the page aloud and control volume from the DSH composer"
 ```
 
@@ -38,12 +38,12 @@ gh repo create dsh-volume-knob --public --source=. --remote=origin --push \
 
 - ⚠️ **仓库必须创建满 1 天**才能通过 CI（自动检查，专门过滤"PR 前几分钟才建好"的仓库）。
   所以今天先建仓库推送，明天再提 PR。
-- 提交方式：fork 那个仓库 → 新增文件 `data/plugins/hunshi-lao-yao__dsh-volume-knob.yml`
-  → 开 PR。内容就是本仓库根目录的 `catalog/hunshi-lao-yao__dsh-volume-knob.yml`（记得把 `hunshi-lao-yao` 换成你的用户名）：
+- 提交方式：fork 那个仓库 → 新增文件 `data/plugins/jianghu-lao-yao__sh-volume-knob.yml`
+  → 开 PR。内容就是本仓库根目录的 `catalog/jianghu-lao-yao__sh-volume-knob.yml`（记得把 `jianghu-lao-yao` 换成你的用户名）：
 
 ```yaml
-url: https://github.com/hunshi-lao-yao/dsh-volume-knob
-name: hunshi-lao-yao/dsh-volume-knob
+url: https://github.com/jianghu-lao-yao/sh-volume-knob
+name: jianghu-lao-yao/sh-volume-knob
 category: voice
 description:
   en: Speaker button beside the composer microphone — one click reads the newest agent reply aloud through dsh-tts (browser voice as fallback), the next click stops, and a press-then-drag-up opens a vertical mixer for in-page media volume and system output volume.
@@ -66,12 +66,12 @@ description:
 
 ## 5. 发到 npm（要「不带 github:」的安装命令就靠这步）
 
-`dsh plugin --profile web add dsh-volume-knob` 这种短命令是**从 npm 解析**的，所以必须发一次 npm。
+`dsh plugin --profile web add sh-volume-knob` 这种短命令是**从 npm 解析**的，所以必须发一次 npm。
 
-**名字已确认可用**：`dsh-volume-knob` 在 registry.npmjs.org 上是 404（未被占用）。
+**名字已确认可用**：`sh-volume-knob` 在 registry.npmjs.org 上是 404（未被占用）。
 
 ```sh
-cd ~/Desktop/harness/dsh-volume-knob
+cd ~/Desktop/harness/sh-volume-knob
 
 npm login                       # 网页登录或粘贴 token
 npm whoami                      # 确认已登录
@@ -85,7 +85,7 @@ npm publish --access public
 发布后立刻可用：
 
 ```sh
-dsh plugin --profile web add dsh-volume-knob
+dsh plugin --profile web add sh-volume-knob
 ```
 
 说明：
@@ -93,14 +93,14 @@ dsh plugin --profile web add dsh-volume-knob
 - 包名没占用，但**先发先得**——想占住就尽早 `npm publish`。
 - `private` 字段已从 `package.json` 去掉；`files` 只列了 `lib/`、`cordis.patch.yml`、`README.md`、`LICENSE`（`PUBLISH.md`、`catalog/`、`.gitignore` 不会进 tarball）。
 - 后续更新：改 `version`（如 `0.4.1`）→ `git commit` → `npm publish`。
-- npm 上发了之后，市场条目里的安装命令会自动变成短的 `dsh plugin --profile web add dsh-volume-knob`（第 3 步的收录条目本身不用改，仍只交那一个 YAML）。
+- npm 上发了之后，市场条目里的安装命令会自动变成短的 `dsh plugin --profile web add sh-volume-knob`（第 3 步的收录条目本身不用改，仍只交那一个 YAML）。
 
 ## 6. 收录之后
 
 列表合并后，`dsh-market` 会自动同步目录，用户就能在**设置 → 插件市场**里搜到并一键安装：
 
 ```sh
-dsh plugin --profile web add dsh-volume-knob          # 已发 npm
-dsh plugin --profile web add github:hunshi-lao-yao/dsh-volume-knob   # 未发 npm 时的等价写法
+dsh plugin --profile web add sh-volume-knob          # 已发 npm
+dsh plugin --profile web add github:jianghu-lao-yao/sh-volume-knob   # 未发 npm 时的等价写法
 ```
 

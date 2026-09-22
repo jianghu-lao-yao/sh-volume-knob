@@ -1,9 +1,9 @@
 {
-  "name": "dsh-volume-knob",
-  "version": "0.4.0",
+  "name": "sh-volume-knob",
+  "version": "0.5.0",
   "description": "Read the page aloud and control volume from the DSH composer: a speaker button right of the microphone that reads the newest reply on one click, stops on the next, and opens a vertical volume mixer (in-page media volume + system output) on press-and-drag-up.",
   "license": "MIT",
-  "author": "混世老妖",
+  "author": "江湖老妖",
   "publishConfig": {
     "access": "public"
   },
@@ -46,10 +46,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hunshi-lao-yao/dsh-volume-knob.git"
+    "url": "git+https://github.com/jianghu-lao-yao/sh-volume-knob.git"
   },
-  "homepage": "https://github.com/hunshi-lao-yao/dsh-volume-knob#readme",
+  "homepage": "https://github.com/jianghu-lao-yao/sh-volume-knob#readme",
   "bugs": {
-    "url": "https://github.com/hunshi-lao-yao/dsh-volume-knob/issues"
+    "url": "https://github.com/jianghu-lao-yao/sh-volume-knob/issues"
   }
 }

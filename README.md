@@ -1,7 +1,7 @@
-# dsh-volume-knob
+# sh-volume-knob
 
 > 朗读 + 音量，一个按钮。· Read the page aloud and control volume from the composer.
-> 作者 / by **混世老妖**
+> 作者 / by **江湖老妖**
 
 DeepSeek Harness Web GUI 的输入框工具行里、**话筒按钮右边**的一个扬声器按钮：
 
@@ -16,8 +16,8 @@ DeepSeek Harness Web GUI 的输入框工具行里、**话筒按钮右边**的一
 ## 安装
 
 ```sh
-# 从 GitHub 直接安装（把 hunshi-lao-yao 换成仓库所有者）
-dsh plugin --profile web add github:hunshi-lao-yao/dsh-volume-knob
+# 从 GitHub 直接安装（把 jianghu-lao-yao 换成仓库所有者）
+dsh plugin --profile web add github:jianghu-lao-yao/sh-volume-knob
 ```
 
 也可以在 `dsh-market`（插件市场）里搜索安装。
@@ -58,7 +58,7 @@ dsh plugin --profile web add github:hunshi-lao-yao/dsh-volume-knob
 ```
 package.json         dsh.bundle.patch + dsh.client.platform=web
 cordis.patch.yml     bundle 层
-lib/index.js         host 半：GET/POST /volume-knob/system、诊断 /volume-knob/diag
+lib/index.js         host 半：GET/POST /sh-volume-knob/system、诊断 /sh-volume-knob/diag
 lib/client.js        浏览器半：slot 按钮 + 朗读器 + 竖式混音台（无需构建步骤）
 ```
 
@@ -76,4 +76,4 @@ lib/client.js        浏览器半：slot 按钮 + 朗读器 + 竖式混音台（
 
 ## 许可
 
-MIT © 混世老妖
+MIT © 江湖老妖
