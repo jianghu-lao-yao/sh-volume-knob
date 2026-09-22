@@ -92,10 +92,41 @@ dsh plugin --profile web add sh-volume-knob
 
 - 包名没占用，但**先发先得**——想占住就尽早 `npm publish`。
 - `private` 字段已从 `package.json` 去掉；`files` 只列了 `lib/`、`cordis.patch.yml`、`README.md`、`LICENSE`（`PUBLISH.md`、`catalog/`、`.gitignore` 不会进 tarball）。
-- 后续更新：改 `version`（如 `0.4.1`）→ `git commit` → `npm publish`。
+- 后续更新：改 `version`（如 `0.5.1`）→ `git commit` → `npm publish`（会弹一次浏览器确认 + 安全密钥，不需要恢复码）。
 - npm 上发了之后，市场条目里的安装命令会自动变成短的 `dsh plugin --profile web add sh-volume-knob`（第 3 步的收录条目本身不用改，仍只交那一个 YAML）。
 
-## 6. 收录之后
+## 6. 以后免交互发版：Trusted Publishing（OIDC）
+
+已经提交了 `.github/workflows/publish.yml`：推一个 `vX.Y.Z` tag 就自动发版，**不需要任何 token、也不需要浏览器确认/动态码**。这一步要你在 npm 网页上配一次授权（只能包主自己配）。
+
+### 6.1 在 npmjs.com 配置 Trusted Publisher
+
+打开 <https://www.npmjs.com/package/sh-volume-knob/access>（包的 Settings → **Trusted Publisher**）→ **Select your publisher** 选 **GitHub Actions**：
+
+| 字段 | 填 |
+|---|---|
+| Organization or user | `jianghu-lao-yao` |
+| Repository | `sh-volume-knob` |
+| Workflow filename | `publish.yml`（只写文件名，必须带 `.yml`；文件要真在 `.github/workflows/` 里） |
+| Environment name | 留空（除非你用 GitHub Environments 做发布审批） |
+| **Allowed actions** | ⚠️ **还要勾上允许 `npm publish`**。2026-09-03 之后新建的 trusted publisher 默认只允许 `npm stage publish`（暂存后需人工批准）；只勾默认项的话工作流会失败或变成待批准。 |
+
+> 前提：npm CLI ≥ **11.5.1**、Node ≥ **22.14.0**——workflow 里用 `actions/setup-node@v6` + Node 24，满足。
+
+### 6.2 发新版
+
+```sh
+# 1. 改 package.json 的 version，比如 0.5.1
+git commit -am "sh-volume-knob 0.5.1"
+git tag v0.5.1
+git push && git push --tags        # workflow 会跑：校验 tag 与 version 一致 → npm publish --provenance
+```
+
+工作流内置了一道保险：**tag 与 `package.json` 的 version 不一致就直接失败**（`v0.5.1` ↔ `0.5.1`）。
+
+配好之后，网页里那个 "Require two-factor authentication for write actions" 勾可以一直留着——OIDC 不走 2FA 那套 CLI 挑战。
+
+## 7. 收录之后
 
 列表合并后，`dsh-market` 会自动同步目录，用户就能在**设置 → 插件市场**里搜到并一键安装：
 
@@ -103,4 +134,5 @@ dsh plugin --profile web add sh-volume-knob
 dsh plugin --profile web add sh-volume-knob          # 已发 npm
 dsh plugin --profile web add github:jianghu-lao-yao/sh-volume-knob   # 未发 npm 时的等价写法
 ```
+
 
