@@ -40,6 +40,9 @@ function die (message) {
   process.exit(1)
 }
 
+const TOKEN_SHAPE = /^(ghp_|github_pat_|gho_|ghs_|ghu_)[A-Za-z0-9_]{20,}$/
+const looksLikeToken = (value) => TOKEN_SHAPE.test(value)
+
 function tokenFromFile (file) {
   try {
     const first = readFileSync(file, 'utf8').split('\n')[0].trim()
@@ -61,14 +64,26 @@ function tokenFromPrompt () {
 }
 
 async function resolveToken () {
+  const reject = (where, value) => {
+    console.warn(`! ${where} 里的内容不像 GitHub token（开头 "${value.slice(0, 12)}…"，${value.length} 字符），已跳过`)
+  }
   const fromEnv = (process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '').trim()
-  if (fromEnv) return { token: fromEnv, source: 'env' }
-  for (const file of [tokenFileArg, path.join(os.homedir(), '.dsh', 'github-token'), path.join(os.homedir(), '.github-token')].filter(Boolean)) {
+  if (fromEnv) {
+    if (looksLikeToken(fromEnv)) return { token: fromEnv, source: 'env' }
+    reject('$GITHUB_TOKEN', fromEnv)
+  }
+  const files = [tokenFileArg, path.join(os.homedir(), '.dsh', 'github-token'), path.join(os.homedir(), '.github-token')].filter(Boolean)
+  for (const file of files) {
     const found = tokenFromFile(file)
-    if (found) return { token: found, source: file }
+    if (!found) continue
+    if (looksLikeToken(found)) return { token: found, source: file }
+    reject(file, found)
   }
   const prompted = tokenFromPrompt()
-  if (prompted) return { token: prompted, source: 'prompt' }
+  if (prompted) {
+    if (looksLikeToken(prompted)) return { token: prompted, source: 'prompt' }
+    reject('输入的内容', prompted)
+  }
   return null
 }
 
@@ -99,7 +114,7 @@ if (!DRY) {
   if (!resolved) {
     die('no GitHub token found.\n'
       + '  • run again and paste it at the hidden prompt, or\n'
-      + '  • save it to ~/.dsh/github-token, or\n'
+      + '  • save it to ~/.dsh/github-token (copy the token itself — not this command!), or\n'
       + '  • export GITHUB_TOKEN=ghp_…\n'
       + '  classic token needs the `repo` scope; fine-grained needs Administration + Contents write.')
   }
