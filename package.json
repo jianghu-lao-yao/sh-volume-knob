@@ -1,0 +1,44 @@
+{
+  "name": "dsh-volume-knob",
+  "version": "0.4.0",
+  "description": "Read the page aloud and control volume from the DSH composer: a speaker button right of the microphone that reads the newest reply on one click, stops on the next, and opens a vertical volume mixer (in-page media volume + system output) on press-and-drag-up.",
+  "license": "MIT",
+  "author": "混世老妖",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "lib/",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "volume",
+    "tts",
+    "read-aloud",
+    "accessibility"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "engines": {
+    "dsh": ">=0.1.5-rc.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  }
+}

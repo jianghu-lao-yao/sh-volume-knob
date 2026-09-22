@@ -1,0 +1,8 @@
+# dsh-volume-knob bundle layer.
+#
+# `name` must stay the full package name: the client-modules registry resolves
+# the browser bundle by the loader entry name.
+- insert:
+    - id: dsh-volume-knob
+      name: 'dsh-volume-knob'
+      config: {}
