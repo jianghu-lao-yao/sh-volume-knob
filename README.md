@@ -16,11 +16,17 @@ DeepSeek Harness Web GUI 的输入框工具行里、**话筒按钮右边**的一
 ## 安装
 
 ```sh
-# 从 GitHub 直接安装（把 jianghu-lao-yao 换成仓库所有者）
+# 从 npm 安装（推荐）
+dsh plugin --profile web add sh-volume-knob
+```
+
+也可以直接从 GitHub 装（等价，取的是仓库源码）：
+
+```sh
 dsh plugin --profile web add github:jianghu-lao-yao/sh-volume-knob
 ```
 
-也可以在 `dsh-market`（插件市场）里搜索安装。
+收录进社区列表后，还能在 `dsh-market`（设置 → 插件市场）里搜到并一键安装。
 
 装完重启一次 `dsh web`（插件在启动时组入 boot graph），然后刷新页面。
 
