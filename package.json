@@ -1,6 +1,6 @@
 {
   "name": "sh-volume-knob",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Read the page aloud and control volume from the DSH composer: a speaker button right of the microphone that reads the newest reply on one click, stops on the next, and opens a vertical volume mixer (in-page media volume + system output) on press-and-drag-up.",
   "license": "MIT",
   "author": "江湖老妖",
