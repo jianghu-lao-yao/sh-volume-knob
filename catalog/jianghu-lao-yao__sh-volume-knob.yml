@@ -1,5 +1,5 @@
-url: https://github.com/buhtig111/sh-volume-knob
-name: buhtig111/sh-volume-knob
+url: https://github.com/jianghu-lao-yao/sh-volume-knob
+name: jianghu-lao-yao/sh-volume-knob
 category: voice
 description:
   en: Speaker button beside the composer microphone — one click reads the newest agent reply aloud through dsh-tts (browser voice as fallback), the next click stops, and a press-then-drag-up opens a vertical mixer for in-page media volume and system output volume.

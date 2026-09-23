@@ -13,7 +13,7 @@
 cd ~/Desktop/harness/sh-volume-knob
 
 # 本地已初始化并提交好；只需加远端、推送
-git remote add origin https://github.com/buhtig111/sh-volume-knob.git
+git remote add origin https://github.com/jianghu-lao-yao/sh-volume-knob.git
 git branch -M main
 git push -u origin main
 ```
@@ -38,12 +38,12 @@ gh repo create sh-volume-knob --public --source=. --remote=origin --push \
 
 - ⚠️ **仓库必须创建满 1 天**才能通过 CI（自动检查，专门过滤"PR 前几分钟才建好"的仓库）。
   所以今天先建仓库推送，明天再提 PR。
-- 提交方式：fork 那个仓库 → 新增文件 `data/plugins/buhtig111__sh-volume-knob.yml`
-  → 开 PR。内容就是本仓库根目录的 `catalog/buhtig111__sh-volume-knob.yml`（记得把 `buhtig111` 换成你的用户名）：
+- 提交方式：fork 那个仓库 → 新增文件 `data/plugins/jianghu-lao-yao__sh-volume-knob.yml`
+  → 开 PR。内容就是本仓库根目录的 `catalog/jianghu-lao-yao__sh-volume-knob.yml`（记得把 `jianghu-lao-yao` 换成你的用户名）：
 
 ```yaml
-url: https://github.com/buhtig111/sh-volume-knob
-name: buhtig111/sh-volume-knob
+url: https://github.com/jianghu-lao-yao/sh-volume-knob
+name: jianghu-lao-yao/sh-volume-knob
 category: voice
 description:
   en: Speaker button beside the composer microphone — one click reads the newest agent reply aloud through dsh-tts (browser voice as fallback), the next click stops, and a press-then-drag-up opens a vertical mixer for in-page media volume and system output volume.
@@ -105,7 +105,7 @@ dsh plugin --profile web add sh-volume-knob
 
 | 字段 | 填 |
 |---|---|
-| Organization or user | `buhtig111` |
+| Organization or user | `jianghu-lao-yao` |
 | Repository | `sh-volume-knob` |
 | Workflow filename | `publish.yml`（只写文件名，必须带 `.yml`；文件要真在 `.github/workflows/` 里） |
 | Environment name | 留空（除非你用 GitHub Environments 做发布审批） |
@@ -132,7 +132,7 @@ git push && git push --tags        # workflow 会跑：校验 tag 与 version �
 
 ```sh
 dsh plugin --profile web add sh-volume-knob          # 已发 npm
-dsh plugin --profile web add github:buhtig111/sh-volume-knob   # 未发 npm 时的等价写法
+dsh plugin --profile web add github:jianghu-lao-yao/sh-volume-knob   # 未发 npm 时的等价写法
 ```
 
 
