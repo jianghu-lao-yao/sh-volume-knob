@@ -105,7 +105,7 @@ const CHAT_HTML = `<!doctype html>
         </div>
       </div>
       <div data-chat-flow data-chat-flow-key="a2resp" data-chat-flow-kind="assistant-step" data-chat-turn="2" data-chat-step="2" data-chat-group-part="response" id="reply">
-        ${ASSISTANT_TEXT.split('\n\n').map((line) => `<p>${line}</p>`).join('\n        ')}
+        ${ASSISTANT_TEXT.split('\n\n').map((line) => `<p>${line}</p>`).join('')}
         <div class="actions"><button>复制</button><button>重试</button></div>
       </div>
       <div data-chat-flow data-chat-flow-key="t2c" data-chat-flow-kind="tool-call" data-chat-turn="2">
@@ -149,11 +149,8 @@ function layoutFixture (window) {
     for (const block of blocks) {
       const text = block.textContent
       const lines = Math.max(1, Math.ceil(text.length / 30))
-      const probe = block.firstChild
-      if (probe && probe.nodeType === 3) {
-        const linesInBlock = Math.ceil(text.length / 30)
-        void linesInBlock
-        charBoxes.set(probe, { top, left: 20, width: 30 })
+      for (const child of block.childNodes) {
+        if (child.nodeType === 3) charBoxes.set(child, { top, left: 20, width: 30 })
       }
       top += lines * LINE_HEIGHT
     }
@@ -612,7 +609,8 @@ await test('reads only the real readable kinds, never the turn furniture', async
   const harness = createHarness()
   const { internals, document } = harness
   const reply = document.getElementById('reply')
-  const index = internals.segmentIndexOf(internals.readableFlow().find((entry) => entry.node === reply))
+  const segment = internals.readableFlow().find((entry) => entry.node === reply)
+  const index = internals.segmentIndexOf(segment)
   includes(index.text, ASSISTANT_TEXT, 'the answer is indexed for offset math')
   assert(!index.text.includes('复制'), 'the action buttons are not indexed')
 
@@ -699,7 +697,7 @@ await test('drag right shows the hint while held; the click places the caret and
   harness.runtime.dispatch(instance, button, 'pointerdown', { clientX: 100, clientY: 700, pointerId: 1, button: 0 })
   harness.runtime.dispatch(instance, button, 'pointermove', { clientX: 140, clientY: 700, pointerId: 1 })
   equal(hint().style.display, 'block', 'the hint shows while dragging right')
-  includes(hint().textContent, '松手后单击起点，再松手开始朗读', 'stage 1 hint wording')
+  includes(hint().textContent, '松开后点击选起点，再松开即朗读', 'stage 1 hint wording')
   equal(caret().style.display, 'none', 'no caret while dragging')
   equal(internals.state.reading, false, 'nothing is read yet')
 
@@ -726,6 +724,40 @@ await test('drag right shows the hint while held; the click places the caret and
   const stream = internals.messageIndex()
   assert(plan.offset > stream.text.indexOf(ASSISTANT_TEXT), 'reading begins inside the clicked answer')
   includes(ASSISTANT_TEXT, plan.text.slice(0, 12), 'and from the clicked character')
+  harness.dispose()
+})
+
+await test('the DOM map and the flattened text share one coordinate space', async () => {
+  // Regression: walkText opens every block with a newline, and tidy() used to
+  // trim that newline off the *string* while leaving the map's offsets alone.
+  // Every character was then shifted by the leading newline, so a click landed
+  // at the end of the line instead of under the pointer.
+  const harness = createHarness({ tts: false })
+  const { internals, document, window } = harness
+  const reply = document.getElementById('reply')
+  const segment = internals.readableFlow().find((entry) => entry.node === reply)
+  const index = internals.segmentIndexOf(segment)
+
+  equal(index.text, ASSISTANT_TEXT, 'the flattened text is exactly the answer')
+  equal(index.length, index.text.length, 'the reported length matches the string (no off-by-leading-newline)')
+
+  // Every mapped text node must resolve to the same offset it was registered at.
+  for (const [textNode, start] of index.map) {
+    const probe = document.createRange()
+    probe.setStart(textNode, 0)
+    probe.collapse(true)
+    const mapped = internals.offsetFromRangeForTest(probe, segment)
+    equal(mapped, start, `offset for the node starting at ${start}`)
+    const inside = document.createRange()
+    inside.setStart(textNode, 1)
+    inside.collapse(true)
+    equal(internals.offsetFromRangeForTest(inside, segment), start + 1, `offset one character into the node at ${start}`)
+  }
+
+  // The first character of the reply is reachable and is the paragraph's start.
+  const firstEntry = index.map[0]
+  equal(firstEntry[1], 0, 'the reply starts at offset 0')
+  includes(index.text, firstEntry[0].nodeValue.slice(0, 6), 'and that offset really is the first characters')
   harness.dispose()
 })
 
