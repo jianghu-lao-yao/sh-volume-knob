@@ -883,6 +883,31 @@ await test('without dsh-tts the browser voice reads from the chosen offset', asy
   harness.dispose()
 })
 
+await test('the icon hover bubble uses the drag hint styling, not a native tooltip', async () => {
+  const harness = createHarness({ tts: false })
+  const { instance, document, internals } = harness
+  const button = document.querySelector('#mount-right button')
+  equal(button.getAttribute('title'), null, 'no native system tooltip')
+  includes(button.getAttribute('aria-label'), '点击朗读，再点停止；上滑调音量；右拖选起点', 'accessible label carries the wording')
+
+  harness.runtime.dispatch(instance, button, 'pointerenter', {})
+  const tip = document.querySelector('.sh-vk-tip')
+  assert(tip, 'the hover bubble exists')
+  equal(tip.style.display, 'block', 'and is visible on hover')
+  equal(tip.textContent, '点击朗读，再点停止；上滑调音量；右拖选起点', 'hover wording')
+  const css = document.getElementById('sh-vk-style').textContent
+  includes(css, '.sh-vk-hint, .sh-vk-tip', 'the bubble shares the hint stylesheet')
+  includes(css, 'color: #f5a524', 'and the drag hint colour')
+  harness.runtime.dispatch(instance, button, 'pointerleave', {})
+  equal(tip.style.display, 'none', 'and hides when the pointer leaves')
+
+  // "停止朗读" is the same bubble while reading
+  internals.state.reading = true
+  harness.runtime.dispatch(instance, button, 'pointerenter', {})
+  equal(document.querySelector('.sh-vk-tip').textContent, '停止朗读', 'the same bubble shows the stop wording')
+  harness.dispose()
+})
+
 await test('the caret is a gradient bar with a breathing pulse and two colour modes', async () => {
   const harness = createHarness({ tts: false })
   const { internals, document } = harness
