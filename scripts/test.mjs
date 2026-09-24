@@ -851,6 +851,23 @@ await test('without dsh-tts the browser voice reads from the chosen offset', asy
   harness.dispose()
 })
 
+await test('the caret is a gradient bar with a breathing pulse and two colour modes', async () => {
+  const harness = createHarness({ tts: false })
+  const { internals, document } = harness
+  const stream = internals.messageIndex()
+  internals.focusStartPosition({ stream, offset: stream.text.indexOf(USER_TEXT) })
+  const style = document.getElementById('sh-vk-style')
+  assert(style, 'the caret stylesheet is installed')
+  const css = style.textContent
+  includes(css, 'linear-gradient', 'the caret uses a gradient')
+  includes(css, 'data-mode="pick"', 'the picker has its own colour mode')
+  includes(css, 'sh-vk-breathe', 'and a soft pulse keyframe instead of a hard blink')
+  const caret = document.querySelector('.sh-vk-caret')
+  equal(caret.dataset.mode, 'read', 'reading mode by default')
+  equal(caret.style.display, 'block', 'and it is on screen')
+  harness.dispose()
+})
+
 await test('a second icon click stops the reading and clears the caret', async () => {
   const harness = createHarness({ tts: true, holdAudio: true })
   const { instance, document, internals } = harness
