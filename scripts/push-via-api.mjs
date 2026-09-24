@@ -191,7 +191,14 @@ try {
 }
 if (!created) console.log(`▶ repo    : ${owner}/${repo} already exists`)
 
-const refPath = `/repos/${owner}/${repo}/git/ref/heads/${branch}`
+/**
+ * Git ref routes. GitHub accepts both the singular and plural spelling when
+ * *reading* a ref, but the write routes only exist under the plural
+ * `/git/refs/`: PATCHing `/git/ref/heads/main` answers 404 while
+ * `/git/refs/heads/main` answers 401 without a token, i.e. the route is real.
+ * Use the plural form everywhere.
+ */
+const refPath = `/repos/${owner}/${repo}/git/refs/heads/${branch}`
 let existingTip = null
 try {
   existingTip = (await api('GET', refPath)).object.sha
@@ -228,7 +235,16 @@ for (const commit of local) {
 
 const tip = parent[0]
 if (existingTip) {
-  await api('PATCH', refPath, { sha: tip, force: true })
+  try {
+    await api('PATCH', refPath, { sha: tip, force: true })
+  } catch (error) {
+    // Some deployments answer 404 on a fast-forward-less PATCH; deleting and
+    // recreating the ref is the documented way to rewind a branch.
+    if (!/→ (404|422)/.test(error.message)) throw error
+    console.warn(`! PATCH ${refPath} → ${error.message.slice(0, 60)}; recreating the ref`)
+    await api('DELETE', refPath)
+    await api('POST', `/repos/${owner}/${repo}/git/refs`, { ref: `refs/heads/${branch}`, sha: tip })
+  }
 } else {
   await api('POST', `/repos/${owner}/${repo}/git/refs`, { ref: `refs/heads/${branch}`, sha: tip })
 }
