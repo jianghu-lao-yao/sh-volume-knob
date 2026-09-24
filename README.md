@@ -93,7 +93,18 @@ npm test        # 16 项：文本定位、光标、拖右挑选、朗读、回�
 
 ## 要求
 
-- DSH `>= 0.1.7-rc.1`（npm `next` 标签，即 `@deepseek-ai/dsh@next`），Web GUI。slot 契约 `conversation.input.right` 与 chat DOM 标记在 0.1.7-rc.1 上已核对。
+- DSH `>= 0.1.5-rc.3`，Web GUI。适配按发布通道**逐级向下兼容**，一次覆盖全部通道：
+
+  | 通道 | 版本 | 说明 |
+  | --- | --- | --- |
+  | 正式版 | 目前尚无无后缀的稳定版（npm 上全部是 `-rc`/`-alpha`） | 出正式版后本插件无需改动 |
+  | `latest` | `0.1.5-rc.3` | 已核对 |
+  | `next` | `0.1.7-rc.1` | 已核对（当前本机 GUI 就是这一版） |
+  | `alpha` | `0.1.7-alpha.2` | 同系列，随 `next` 一起通过 |
+
+  这三个通道用的契约完全一样，所以插件代码里没有任何按版本分支：`window.__ModuleLoader__.load({id, factory})`、
+  `ctx.slots.inject` / `ctx.slots.register`、以及 `conversation.input.right` 和 `[data-chat-flow*]` 标记在
+  0.1.5-rc.3 与 0.1.7-rc.1 上逐个比对过，签名一致。
 - 系统音量路由：macOS（`osascript`，内置）/ Linux（`pactl`）。其他平台该行置灰并显示原因。
 - 可选：[dsh-tts](https://github.com/GooDAnDReaDY/dsh-tts) —— 没装也能用，只是回退到浏览器语音。
 
