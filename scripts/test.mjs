@@ -686,47 +686,42 @@ await test('clicking again stops playback', async () => {
   harness.dispose()
 })
 
-await test('drag right: hint only, then a page click places the caret, release reads', async () => {
+await test('drag right shows the hint while held; the click places the caret and reads', async () => {
   const harness = createHarness({ tts: false, holdAudio: true })
-  const { instance, document, window, internals } = harness
+  const { instance, document, internals } = harness
   const button = document.querySelector('#mount-right button')
   const reply = document.getElementById('reply')
   const box = reply.getBoundingClientRect()
   const caret = () => document.querySelector('.sh-vk-caret')
-  const hint = () => document.querySelector('.sh-vk-hint')
+  const hint = () => document.querySelector('.sh-vk-hint') || { style: {}, textContent: '' }
 
-  // Stage 1 — hold the icon and drag right: hint only, no caret.
+  // Stage 1 — the hint is on screen only while the drag is held down.
   harness.runtime.dispatch(instance, button, 'pointerdown', { clientX: 100, clientY: 700, pointerId: 1, button: 0 })
   harness.runtime.dispatch(instance, button, 'pointermove', { clientX: 140, clientY: 700, pointerId: 1 })
-  equal(internals.state.picking, false, 'still just a press while the icon is held')
-  equal(internals.state.pickStage, 'idle', 'no pick stage yet')
-
-  // Stage 1b — release the icon: the picker arms and shows the hint, no caret.
-  harness.runtime.dispatch(instance, button, 'pointerup', { clientX: 140, clientY: 700, pointerId: 1 })
-  equal(internals.state.picking, true, 'releasing after the drag arms the picker')
-  equal(internals.state.pickStage, 'armed', 'stage = armed')
-  equal(hint().style.display, 'block', 'the hint is showing')
+  equal(hint().style.display, 'block', 'the hint shows while dragging right')
   includes(hint().textContent, '松手后单击起点，再松手开始朗读', 'stage 1 hint wording')
-  equal(caret().style.display, 'none', 'no caret while armed')
+  equal(caret().style.display, 'none', 'no caret while dragging')
   equal(internals.state.reading, false, 'nothing is read yet')
 
-  // Stage 2 — click a spot on the page: the caret appears on that character.
-  harness.runtime.dispatch(instance, document, 'pointerdown', { clientX: box.left + 50, clientY: box.top + 8, pointerId: 2, button: 0 })
-  equal(internals.state.pickStage, 'placed', 'the click placed the start position')
-  equal(caret().style.display, 'block', 'the caret is now visible')
-  equal(caret().dataset.mode, 'pick', 'and tinted for picking')
-  includes(hint().textContent, '松手开始朗读', 'stage 2 hint wording')
-  equal(internals.state.cursor.key, 'a2resp', 'the caret sits on the clicked answer')
-  equal(internals.state.reading, false, 'still nothing read while the button is down')
+  // Stage 1b — releasing hides the hint and waits for the click.
+  harness.runtime.dispatch(instance, button, 'pointerup', { clientX: 140, clientY: 700, pointerId: 1 })
+  equal(hint().style.display, 'none', 'releasing hides the hint')
+  equal(internals.state.picking, true, 'the picker is armed')
+  equal(internals.state.pickStage, 'armed', 'stage = armed')
+  equal(document.body.style.cursor, 'crosshair', 'the page invites a click')
 
-  // Stage 3 — release: reading starts from there.
+  // Stage 2 — clicking anywhere readable puts the caret there and reads.
+  harness.runtime.dispatch(instance, document, 'pointerdown', { clientX: box.left + 50, clientY: box.top + 8, pointerId: 2, button: 0 })
+  equal(caret().style.display, 'block', 'the click placed the caret')
+  equal(caret().dataset.mode, 'read', 'the caret is in reading mode, not pick mode')
+  equal(internals.state.cursor.key, 'a2resp', 'the caret sits on the clicked answer')
   harness.runtime.dispatch(instance, document, 'pointerup', { clientX: box.left + 50, clientY: box.top + 8, pointerId: 2 })
   await harness.settle()
   await harness.settle()
   equal(internals.state.picking, false, 'picker disarmed')
-  equal(internals.state.pickStage, 'idle', 'stage reset')
-  equal(hint().style.display, 'none', 'the hint disappeared')
-  equal(internals.state.reading, true, 'releasing started the reading')
+  equal(internals.state.reading, true, 'the reading started from the clicked character')
+  equal(hint().style.display, 'none', 'no hint is left on screen')
+  equal(document.body.style.cursor, '', 'the cursor is restored')
   const plan = internals.readingPlan()
   const stream = internals.messageIndex()
   assert(plan.offset > stream.text.indexOf(ASSISTANT_TEXT), 'reading begins inside the clicked answer')
@@ -744,6 +739,7 @@ await test('an armed picker ignores a click that misses readable text', async ()
   harness.runtime.dispatch(instance, document, 'pointerdown', { clientX: 5, clientY: 5, pointerId: 2, button: 0 })
   equal(internals.state.pickStage, 'armed', 'a miss keeps the picker armed')
   equal(document.querySelector('.sh-vk-caret').style.display, 'none', 'and shows no caret')
+  equal(document.body.style.cursor, 'crosshair', 'and stays ready for another click')
   harness.runtime.dispatch(instance, document, 'pointerup', { clientX: 5, clientY: 5, pointerId: 2 })
   equal(internals.state.reading, false, 'a miss does not start reading')
   harness.dispose()
@@ -852,6 +848,34 @@ await test('without dsh-tts the browser voice reads from the chosen offset', asy
   assert(harness.spoken.length > 0, 'browser voice was used')
   includes(harness.spoken.join(''), ASSISTANT_TEXT.slice(5, 15), 'starts at the chosen offset')
   assert(!harness.requests.some((entry) => entry.path === '/dsh-tts/speak'), 'never touched the missing route')
+  harness.dispose()
+})
+
+await test('a second icon click stops the reading and clears the caret', async () => {
+  const harness = createHarness({ tts: true, holdAudio: true })
+  const { instance, document, internals } = harness
+  const button = document.querySelector('#mount-right button')
+  const reply = document.getElementById('reply')
+  const box = reply.getBoundingClientRect()
+  const caret = () => document.querySelector('.sh-vk-caret')
+
+  // pick a start position, which reads and leaves the caret on screen
+  harness.runtime.dispatch(instance, button, 'pointerdown', { clientX: 100, clientY: 700, pointerId: 1, button: 0 })
+  harness.runtime.dispatch(instance, button, 'pointermove', { clientX: 140, clientY: 700, pointerId: 1 })
+  harness.runtime.dispatch(instance, button, 'pointerup', { clientX: 140, clientY: 700, pointerId: 1 })
+  harness.runtime.dispatch(instance, document, 'pointerdown', { clientX: box.left + 40, clientY: box.top + 8, pointerId: 2, button: 0 })
+  harness.runtime.dispatch(instance, document, 'pointerup', { clientX: box.left + 40, clientY: box.top + 8, pointerId: 2 })
+  await harness.settle()
+  await harness.settle()
+  equal(internals.state.reading, true, 'reading from the picked position')
+  equal(caret().style.display, 'block', 'the caret is visible while reading')
+
+  // stop with a plain click on the icon — the caret must go away with the sound
+  harness.runtime.dispatch(instance, button, 'pointerdown', { clientX: 500, clientY: 700, pointerId: 3, button: 0 })
+  harness.runtime.dispatch(instance, button, 'pointerup', { clientX: 500, clientY: 700, pointerId: 3 })
+  equal(internals.state.reading, false, 'the second click stopped the reading')
+  equal(caret().style.display, 'none', 'and the caret is gone')
+  equal(document.body.style.cursor, '', 'the cursor is restored')
   harness.dispose()
 })
 
