@@ -1,7 +1,7 @@
 {
   "name": "sh-volume-knob",
-  "version": "0.5.0",
-  "description": "Read the page aloud and control volume from the DSH composer: a speaker button right of the microphone that reads the newest reply on one click, stops on the next, and opens a vertical volume mixer (in-page media volume + system output) on press-and-drag-up.",
+  "version": "0.6.0",
+  "description": "Read the newest turn aloud from the DSH composer: a speaker button right of the microphone that reads from the start of your newest question, scrolls the page to that spot and marks it with a blinking caret on one click, stops on the next, picks any other reading start position on press-and-drag-right, and opens a vertical volume mixer (in-page media volume + system output) on press-and-drag-up.",
   "license": "MIT",
   "author": "江湖老妖",
   "publishConfig": {
@@ -21,6 +21,9 @@
     "README.md",
     "LICENSE"
   ],
+  "scripts": {
+    "test": "node scripts/test.mjs"
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -39,10 +42,13 @@
     }
   },
   "engines": {
-    "dsh": ">=0.1.5-rc.2"
+    "dsh": ">=0.1.7-rc.1"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.1"
   },
   "repository": {
     "type": "git",
