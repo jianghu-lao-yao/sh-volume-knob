@@ -56,30 +56,62 @@ function includes (haystack, needle, message) {
 }
 
 // ---------------------------------------------------------------------------
-// Fixture: a minimal but faithful DSH conversation shell
+// Fixture: the *real* DSH chat DOM, copied from a live page
+//
+// dsh 0.1.7-rc.1 publishes these node kinds (verified by dumping the live DOM
+// in the browser): user, turn-process, assistant-step, tool-call, turn-tail.
+// Every node is a sibling; none nests another. `data-chat-group-part` splits an
+// assistant step into 'reasoning' (the model's scratchpad) and 'response' (the
+// answer). The first version of this plugin guessed a structure that does not
+// exist — `kind="assistant"` — and read the token/time footer aloud, which is
+// exactly what this fixture now guards against.
 // ---------------------------------------------------------------------------
 const USER_TEXT = '第1个问题：请解释一下什么是卷积神经网络，并给出一个例子。'
+const OLD_USER_TEXT = '更早的一个问题，不该被朗读。'
 const OLD_ASSISTANT = '这是一条更早的回复，不该被朗读。'
 const ASSISTANT_TEXT = [
   '卷积神经网络是一种专门处理网格状数据的网络结构。',
   '它通过卷积核在输入上滑动来提取局部特征。',
   '举个例子：识别图片中的猫。',
 ].join('\n\n')
+const THINKING_TEXT = '思考先要理解用户问的是卷积神经网络，再给出例子。'
+const PROCESS_TEXT = '已完成工作 用时 4秒'
+const TAIL_TEXT = '用量 301K tok 02:00'
+const TOOL_TEXT = '运行命令 Inspect chat bundle'
 
 const CHAT_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><title>fixture</title></head>
 <body>
   <div id="app">
     <div data-conversation-scroll id="scroller" style="overflow-y:auto;height:320px">
-      <div data-chat-flow data-chat-flow-key="u1" data-chat-flow-kind="user">
-        <div data-chat-flow data-chat-flow-key="a0" data-chat-flow-kind="assistant"><p>${OLD_ASSISTANT}</p></div>
+      <div data-chat-flow data-chat-flow-key="u1" data-chat-flow-kind="user" data-chat-turn="1">
+        <p>${OLD_USER_TEXT}</p>
       </div>
-      <div data-chat-flow data-chat-flow-key="u2" data-chat-flow-kind="user"><p>${USER_TEXT}</p></div>
-      <div data-chat-flow data-chat-flow-key="a1" data-chat-flow-kind="assistant" id="reply">
+      <div data-chat-flow data-chat-flow-key="a0" data-chat-flow-kind="assistant-step" data-chat-turn="1" data-chat-step="1" data-chat-group-part="response">
+        <p>${OLD_ASSISTANT}</p>
+      </div>
+
+      <div data-chat-flow data-chat-flow-key="u2" data-chat-flow-kind="user" data-chat-turn="2" id="question">
+        <p>${USER_TEXT}</p>
+      </div>
+      <div data-chat-flow data-chat-flow-key="p2" data-chat-flow-kind="turn-process" data-chat-turn="2">
+        <p>${PROCESS_TEXT}</p>
+      </div>
+      <div data-chat-flow data-chat-flow-key="a2r" data-chat-flow-kind="assistant-step" data-chat-turn="2" data-chat-step="1" data-chat-group-part="reasoning">
+        <p>${THINKING_TEXT}</p>
+      </div>
+      <div data-chat-flow data-chat-flow-key="a2resp" data-chat-flow-kind="assistant-step" data-chat-turn="2" data-chat-step="2" data-chat-group-part="response" id="reply">
         ${ASSISTANT_TEXT.split('\n\n').map((line) => `<p>${line}</p>`).join('\n        ')}
-        <div class="actions"><button>复制</button><button>重试</button><span>21 tok</span></div>
+        <div class="actions"><button>复制</button><button>重试</button></div>
       </div>
-      <div data-chat-flow data-chat-flow-key="a2" data-chat-flow-kind="assistant" id="hidden-reply" style="display:none"><p>隐藏的回复</p></div>
+      <div data-chat-flow data-chat-flow-key="t2c" data-chat-flow-kind="tool-call" data-chat-turn="2">
+        <p>${TOOL_TEXT}</p>
+      </div>
+      <div data-chat-flow data-chat-flow-key="t2" data-chat-flow-kind="turn-tail" data-chat-turn="2">
+        <span>${TAIL_TEXT}</span>
+      </div>
+
+      <div data-chat-flow data-chat-flow-key="a3" data-chat-flow-kind="assistant-step" data-chat-turn="3" data-chat-step="1" data-chat-group-part="response" id="hidden-reply" style="display:none"><p>隐藏的回复</p></div>
     </div>
     <div id="composer">
       <button id="mic" type="button" aria-label="语音输入"></button>
@@ -557,16 +589,24 @@ await test('bundle registers the 0.1.7 slot contract', async () => {
   harness.dispose()
 })
 
-await test('flattens the reply and maps every character to a DOM range', async () => {
+await test('reads only the real readable kinds, never the turn furniture', async () => {
   const harness = createHarness()
   const { internals, document } = harness
   const reply = document.getElementById('reply')
-  const index = internals.indexOf(reply)
-  equal(index.text, `${ASSISTANT_TEXT}\n\n21 tok`, 'the index keeps every rendered character so offsets stay aligned')
-  equal(internals.speakable(index.text), ASSISTANT_TEXT, 'speech drops the token badge')
-  const flow = internals.visibleFlow()
-  equal(flow.length, 4, 'hidden replies are not readable')
-  assert(flow.every((entry) => entry.text), 'every readable node carries text')
+  const index = internals.segmentIndexOf(internals.readableFlow().find((entry) => entry.node === reply))
+  includes(index.text, ASSISTANT_TEXT, 'the answer is indexed for offset math')
+  assert(!index.text.includes('复制'), 'the action buttons are not indexed')
+
+  const flow = internals.readableFlow()
+  equal(flow.length, 4, 'two questions + the newest answer + the older answer')
+  const kinds = flow.map((entry) => entry.kind).join(',')
+  equal(kinds, 'user,assistant-step,user,assistant-step', 'only user and assistant-step are readable')
+  const all = flow.map((entry) => entry.text).join('\n\n')
+  assert(!all.includes(THINKING_TEXT), 'reasoning steps are not spoken')
+  assert(!all.includes(PROCESS_TEXT), 'the turn-process header is not spoken')
+  assert(!all.includes(TOOL_TEXT), 'tool-call cards are not spoken')
+  assert(!all.includes(TAIL_TEXT), 'the token/time footer is not spoken')
+  assert(!all.includes('隐藏的回复'), 'hidden nodes are not readable')
   harness.dispose()
 })
 
@@ -593,6 +633,18 @@ await test('click reads from the start of the newest question and scrolls there'
   const plan = harness.internals.readingPlan()
   includes(plan.text, USER_TEXT, 'plan starts at the question')
   assert(requests.some((entry) => entry.path === '/sh-volume-knob/diag'), 'diagnostics were reported')
+
+  // Regression: the live DOM puts the token/time footer (kind="turn-tail")
+  // *inside* the flow, and the first released version happily used it as the
+  // start position — the caret then blinked on "用量 301K tok 02:00".
+  const resolved = harness.internals.resolveCursor()
+  equal(resolved.segment.kind, 'user', 'the start position lives on a question node')
+  equal(resolved.segment.node.id, 'question', 'and specifically the newest one')
+  const questionBox = document.getElementById('question').getBoundingClientRect()
+  const caretTop = harness.internals.state.rect && harness.internals.state.rect.top
+  assert(caretTop >= questionBox.top - 2 && caretTop <= questionBox.bottom + 2,
+    `the caret sits inside the question, not on the footer (caret ${caretTop}, question ${questionBox.top}..${questionBox.bottom})`)
+  assert(!plan.text.includes(TAIL_TEXT), 'the token/time footer is never read')
   harness.dispose()
 })
 
@@ -633,7 +685,7 @@ await test('press and drag right picks the start position, then reads from it', 
   const caret = document.querySelector('.sh-vk-caret')
   equal(caret.dataset.mode, 'pick', 'caret is tinted for picking')
   const picked = internals.state.cursor
-  assert(picked && picked.key === 'a1', `picked the newest answer (got ${JSON.stringify(picked)})`)
+  assert(picked && picked.key === 'a2resp', `picked the newest answer (got ${JSON.stringify(picked)})`)
   assert(picked.offset > 0, 'picked a position inside the reply')
   assert(picked.offset < ASSISTANT_TEXT.length, 'picked before the end of the reply')
 
@@ -645,8 +697,12 @@ await test('press and drag right picks the start position, then reads from it', 
   equal(caret.dataset.mode, 'read', 'caret back to reading mode')
   equal(internals.state.reading, false, 'releasing after a pick does not auto-start playback')
   const plan = internals.readingPlan()
-  includes(plan.text, USER_TEXT, 'the question still leads the reading span')
-  includes(plan.text, ASSISTANT_TEXT.slice(picked.offset, picked.offset + 8), 'reading starts at the picked character')
+  const stream = internals.messageIndex()
+  includes(stream.text, USER_TEXT, 'the question is part of the reading stream')
+  assert(plan.offset >= stream.text.indexOf(ASSISTANT_TEXT), 'the start position moved into the reply')
+  includes(ASSISTANT_TEXT, plan.text.slice(0, 12), 'reading begins inside the picked answer')
+  assert(plan.offset > stream.text.indexOf(ASSISTANT_TEXT), 'the picked position is past the start of the answer')
+  assert(internals.state.cursor.key === 'a2resp', 'the caret stays on the picked answer segment')
   harness.dispose()
 })
 
@@ -739,9 +795,11 @@ await test('without dsh-tts the browser voice reads from the chosen offset', asy
 
 await test('the caret is re-measured as the page scrolls', async () => {
   const harness = createHarness({ tts: false })
-  const { internals, document, window } = harness
-  internals.state.cursor = { key: 'a1', offset: 3 }
-  internals.focusStartPosition({ node: document.getElementById('reply'), offset: 3 })
+  const { internals, window, document } = harness
+  const stream = internals.messageIndex()
+  const at = stream.text.indexOf(ASSISTANT_TEXT) + 3
+  internals.state.cursor = { key: 'a2resp', offset: 3 }
+  internals.focusStartPosition({ stream, offset: at })
   const caret = document.querySelector('.sh-vk-caret')
   const first = { left: caret.style.left, top: caret.style.top }
   assert(first.top, 'the caret was placed')
@@ -753,24 +811,33 @@ await test('the caret is re-measured as the page scrolls', async () => {
 await test('arrow keys move the caret and wrap the position', async () => {
   const harness = createHarness({ tts: false })
   const { internals, document, instance } = harness
+  // Arrow keys move by *stream* offset, so they cross segments in order and can
+  // never wander into the unreadable gaps (the turn tail lives between them).
   internals.state.cursor = { key: 'u2', offset: 2 }
+  const stream = internals.messageIndex()
+  const questionStart = stream.text.indexOf(USER_TEXT)
+  equal(internals.resolveCursor().offset, questionStart + 2, 'the saved offset resolves in stream space')
   const button = document.querySelector('#mount-right button')
   harness.runtime.dispatch(instance, button, 'keydown', { key: 'ArrowRight', shiftKey: false })
-  equal(internals.state.cursor.offset, 3, 'right by one character')
+  equal(internals.state.cursor.offset, 3, 'right by one character (still inside the question)')
+  equal(internals.state.cursor.key, 'u2', 'and still on the question segment')
   harness.runtime.dispatch(instance, button, 'keydown', { key: 'ArrowLeft', shiftKey: true })
-  equal(internals.state.cursor.offset, 0, 'shift+left by twenty, clamped at zero')
+  equal(internals.state.cursor.key, 'a0', 'shift+left twenty crosses back into the older answer')
+  equal(internals.state.cursor.offset, 1, 'and lands at the matching character inside it')
   harness.dispose()
 })
 
-await test('a brand new turn starts reading from the question', async () => {
+await test('a stale cursor falls back to the newest question', async () => {
   const harness = createHarness({ tts: false })
   const { internals } = harness
   internals.state.cursor = { key: 'gone', offset: 99 } // e.g. the reply was re-rendered
   const plan = internals.readingPlan()
   includes(plan.text, USER_TEXT, 'the newest question is read')
   includes(plan.text, ASSISTANT_TEXT, 'the newest reply is read')
-  assert(!plan.text.includes(OLD_ASSISTANT), 'a stale cursor does not pull older turns in')
-  equal(internals.resolveCursor().node.getAttribute('data-chat-flow-key'), 'u2', 'caret falls back to the question')
+  assert(plan.offset === internals.defaultStartOffset(internals.messageIndex()), 'the plan starts at the default position')
+  assert(!plan.text.startsWith(OLD_USER_TEXT), 'reading does not start in an older turn')
+  const resolved = internals.resolveCursor()
+  equal(resolved.segment.node.getAttribute('data-chat-flow-key'), 'u2', 'caret falls back to the question')
   harness.dispose()
 })
 

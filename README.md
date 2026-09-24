@@ -66,11 +66,24 @@ dsh plugin --profile web add github:jianghu-lao-yao/sh-volume-knob
 
 ## 朗读实现
 
-- 文本来源：会话流节点 `[data-chat-flow]`（`data-chat-flow-kind="user" | "assistant"`）。起点所在节点**从起点字符**开始取，之后每个可见节点整段取，直到最新节点结束；更早的轮次不读。
-- 每个字符都有对应的 DOM 位置：插件把节点按 `innerText` 语义打平成文本串，同时记录「第 n 个字落在哪个文本节点的第几个字符」，所以光标、翻页、按字符微调都精确到字。
-- 节点内会跳过按钮（复制/重试等）和 `tokens` 之类的时间/计数徽标，所以它们不会被念出来。
+- 文本来源是**白名单**，不是黑名单。真实 DSH DOM 里每个消息节点都带 `[data-chat-flow]`，用 `data-chat-flow-kind` 标明类型；实测（dsh 0.1.7-rc.1）出现过这 5 种：
+
+  | kind | 内容 | 是否朗读 |
+  | --- | --- | --- |
+  | `user` | 你的提问 | ✅ 默认起点就是最新这条的第一个字 |
+  | `assistant-step` | 回复正文（`data-chat-group-part="response"`） | ✅ |
+  | `assistant-step` | 思考过程（`data-chat-group-part="reasoning"`） | ❌ 模型草稿，不念 |
+  | `turn-process` | 「已完成工作 用时 4 秒」折叠头 | ❌ |
+  | `turn-tail` | `用量 301K tok 02:00` | ❌ |
+  | `tool-call` | 工具调用卡片 | ❌ |
+
+  所有节点都是**平铺的兄弟节点**（没有嵌套），所以按文档顺序拼接即可。
+- 阅读范围：从起点字符起，沿「可读节点序列」一直读到末尾；更早的轮次不读。
+- 每个字符都有对应的 DOM 位置：插件把节点按 `innerText` 语义打平成文本串，同时记录「第 n 个字落在哪个文本节点的第几个字符」，所以光标、翻页、按字符微调都精确到字；节点内部的按钮（复制/重试）不计入。
 - 合成：按 ~220 字切句块，逐块 `POST /dsh-tts/speak`（复用 [dsh-tts](https://github.com/GooDAnDReaDY/dsh-tts) 已配置的 provider 链，例如 Edge `zh-CN-XiaoxiaoNeural`），顺序播放；**未安装 dsh-tts 或某个分块合成失败时，剩下的部分回退浏览器 `speechSynthesis`**（不会从头重念）。
 - 点按钮时会先暂停页面上正在播放的音频，所以和 dsh-tts 的自动朗读（`speakReplies`）不会重叠。
+
+> 0.6.0 在这里翻过车：它按 `data-chat-flow-kind="assistant"` 找回复（真实值其实是 `assistant-step`），又用「跳过 button/svg」的黑名单排除杂物，结果把 `turn-tail` 当成了起点——光标落在时间戳上。0.7.0 换成白名单，并补了针对这一条的回归测试。
 
 ## 结构
 
@@ -103,7 +116,8 @@ npm test        # 16 项：文本定位、光标、拖右挑选、朗读、回�
 
   ⚠️ **`latest` 比 `next` 旧**（0.1.5-rc.3 < 0.1.7-rc.1），所以通道顺序 ≠ 版本递增顺序。这正是 `engines.dsh` 必须写成**下限式** `>=0.1.5-rc.3` 的原因：写成按「最新那版」收窄的范围（比如 `>=0.1.7-rc.1`）会把 `latest` 关在门外；写成 `^0.1.5` 又会在 0.1.x 上永远不匹配 `0.1.7-rc.1`，把 `next` 也踢掉。
   正式版发出来之后，位于版本号下方的通道一律被这个范围涵盖，不需要再动。
-- 插件代码里没有任何按版本分支：`window.__ModuleLoader__.load({id, factory})`、`ctx.slots.inject` / `ctx.slots.register`、`conversation.input.right`、以及 `[data-chat-flow*]` 标记，在 `latest`(0.1.5-rc.3) 与 `next`(0.1.7-rc.1) 上逐个比对过，签名一致。
+- 插件代码里没有任何按版本分支：`window.__ModuleLoader__.load({id, factory})`、`ctx.slots.inject` / `ctx.slots.register`、`conversation.input.right` 这些接口在 `latest`(0.1.5-rc.3) 与 `next`(0.1.7-rc.1) 上逐个比对过，签名一致。
+  ⚠️ 但**消息 DOM 的取值**必须实测，不能只看接口名：0.6.0 就是栽在这里——它以为 kind 是 `user`/`assistant`，实际是 `user`/`assistant-step`/`turn-process`/`turn-tail`/`tool-call`。0.7.0 的取值是在真实页面上 dump 出来的（见下表）。
 - 系统音量路由：macOS（`osascript`，内置）/ Linux（`pactl`）。其他平台该行置灰并显示原因。
 - 可选：[dsh-tts](https://github.com/GooDAnDReaDY/dsh-tts) —— 没装也能用，只是回退到浏览器语音。
 
