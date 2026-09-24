@@ -97,8 +97,12 @@ const CHAT_HTML = `<!doctype html>
       <div data-chat-flow data-chat-flow-key="p2" data-chat-flow-kind="turn-process" data-chat-turn="2">
         <p>${PROCESS_TEXT}</p>
       </div>
-      <div data-chat-flow data-chat-flow-key="a2r" data-chat-flow-kind="assistant-step" data-chat-turn="2" data-chat-step="1" data-chat-group-part="reasoning">
-        <p>${THINKING_TEXT}</p>
+      <!-- reasoning sits inside a collapsed process group: an ANCESTOR has
+           display:none, which is how the live page hides it -->
+      <div style="display:none" id="collapsed-process">
+        <div data-chat-flow data-chat-flow-key="a2r" data-chat-flow-kind="assistant-step" data-chat-turn="2" data-chat-step="1" data-chat-group-part="reasoning">
+          <p>${THINKING_TEXT}</p>
+        </div>
       </div>
       <div data-chat-flow data-chat-flow-key="a2resp" data-chat-flow-kind="assistant-step" data-chat-turn="2" data-chat-step="2" data-chat-group-part="response" id="reply">
         ${ASSISTANT_TEXT.split('\n\n').map((line) => `<p>${line}</p>`).join('\n        ')}
@@ -589,6 +593,21 @@ await test('bundle registers the 0.1.7 slot contract', async () => {
   harness.dispose()
 })
 
+await test('finds message nodes through the kind marker, not data-chat-flow', async () => {
+  // The live page had 223 `[data-chat-flow-kind]` nodes and 32 `[data-chat-flow]`
+  // nodes, in *disjoint* sets: reading the flow marker alone found containers
+  // with kind=null, so nothing was readable and the button went silent.
+  const harness = createHarness()
+  const { internals, document } = harness
+  const decoys = document.createElement('div')
+  decoys.innerHTML = '<div data-chat-flow></div><div data-chat-flow></div><div data-chat-flow></div>'
+  document.getElementById('scroller').prepend(decoys)
+  const flow = internals.readableFlow()
+  equal(flow.length, 4, 'the decoy flow containers are ignored')
+  equal(flow.map((entry) => entry.kind).join(','), 'user,assistant-step,user,assistant-step', 'the real message nodes are found')
+  harness.dispose()
+})
+
 await test('reads only the real readable kinds, never the turn furniture', async () => {
   const harness = createHarness()
   const { internals, document } = harness
@@ -602,7 +621,7 @@ await test('reads only the real readable kinds, never the turn furniture', async
   const kinds = flow.map((entry) => entry.kind).join(',')
   equal(kinds, 'user,assistant-step,user,assistant-step', 'only user and assistant-step are readable')
   const all = flow.map((entry) => entry.text).join('\n\n')
-  assert(!all.includes(THINKING_TEXT), 'reasoning steps are not spoken')
+  assert(!all.includes(THINKING_TEXT), 'reasoning steps are not spoken (their ancestor is display:none)')
   assert(!all.includes(PROCESS_TEXT), 'the turn-process header is not spoken')
   assert(!all.includes(TOOL_TEXT), 'tool-call cards are not spoken')
   assert(!all.includes(TAIL_TEXT), 'the token/time footer is not spoken')
