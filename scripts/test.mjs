@@ -883,18 +883,45 @@ await test('without dsh-tts the browser voice reads from the chosen offset', asy
   harness.dispose()
 })
 
+await test('the icon stays neutral unless playback is actually silent', async () => {
+  const harness = createHarness({ tts: false })
+  const { instance, document, internals } = harness
+  const button = () => document.querySelector('#mount-right button')
+  const colour = () => button().style.color
+  // jsdom echoes colours as written, browsers normalise to rgb(): accept both
+  const isRed = (value) => /#e5484d|229,\s*72,\s*77/i.test(String(value))
+
+  // idle + muted page volume: the icon must NOT look broken
+  internals.state.pageMuted = true
+  harness.runtime.render(instance)
+  assert(!isRed(colour()), `idle muted icon stays neutral (got ${colour()})`)
+
+  // reading + muted: now red is meaningful (you pressed play and hear nothing)
+  internals.state.reading = true
+  harness.runtime.render(instance)
+  assert(isRed(colour()), `silent playback turns the icon red (got ${colour()})`)
+  harness.runtime.dispatch(instance, button(), 'pointerenter', {})
+  includes(document.querySelector('.sh-vk-tip').textContent, '页内音量已静音', 'and the bubble explains why')
+
+  // reading + not muted: the normal reading colour
+  internals.state.pageMuted = false
+  harness.runtime.render(instance)
+  assert(!isRed(colour()), 'audible playback is not red')
+  harness.dispose()
+})
+
 await test('the icon hover bubble uses the drag hint styling, not a native tooltip', async () => {
   const harness = createHarness({ tts: false })
   const { instance, document, internals } = harness
   const button = document.querySelector('#mount-right button')
   equal(button.getAttribute('title'), null, 'no native system tooltip')
-  includes(button.getAttribute('aria-label'), '点击朗读，再点停止；上滑调音量；右拖选起点', 'accessible label carries the wording')
+  includes(button.getAttribute('aria-label'), '点击朗读；上滑调音量；右拖选起点', 'accessible label carries the wording')
 
   harness.runtime.dispatch(instance, button, 'pointerenter', {})
   const tip = document.querySelector('.sh-vk-tip')
   assert(tip, 'the hover bubble exists')
   equal(tip.style.display, 'block', 'and is visible on hover')
-  equal(tip.textContent, '点击朗读，再点停止；上滑调音量；右拖选起点', 'hover wording')
+  equal(tip.textContent, '点击朗读；上滑调音量；右拖选起点', 'hover wording')
   const css = document.getElementById('sh-vk-style').textContent
   includes(css, '.sh-vk-hint, .sh-vk-tip', 'the bubble shares the hint stylesheet')
   includes(css, 'color: #f5a524', 'and the drag hint colour')
