@@ -93,18 +93,17 @@ npm test        # 16 项：文本定位、光标、拖右挑选、朗读、回�
 
 ## 要求
 
-- DSH `>= 0.1.5-rc.3`，Web GUI。适配按发布通道**逐级向下兼容**，一次覆盖全部通道：
+- DSH `>= 0.1.5-rc.3`，Web GUI。适配按你要的通道顺序推进：**正式版 → next → latest**（alpha 版不在适配范围内）。
 
-  | 通道 | 版本 | 说明 |
-  | --- | --- | --- |
-  | 正式版 | 目前尚无无后缀的稳定版（npm 上全部是 `-rc`/`-alpha`） | 出正式版后本插件无需改动 |
-  | `latest` | `0.1.5-rc.3` | 已核对 |
-  | `next` | `0.1.7-rc.1` | 已核对（当前本机 GUI 就是这一版） |
-  | `alpha` | `0.1.7-alpha.2` | 同系列，随 `next` 一起通过 |
+  | 顺序 | 通道 | 现在这个 Tag 指向 | 状态 |
+  | --- | --- | --- | --- |
+  | 1 | 正式版（无后缀稳定版） | **还没有**——npm 上 26 个版本全是 `-rc`/`-alpha`，GitHub 上 10 个 release 全标着 prerelease（`deepseek-harness@0.0.1` 只是占位包） | 出了即通过，插件无需改动 |
+  | 2 | `next` | `0.1.7-rc.1` | **已核对**（本机 GUI 就是这一版） |
+  | 3 | `latest` | `0.1.5-rc.3` | **已核对** |
 
-  这三个通道用的契约完全一样，所以插件代码里没有任何按版本分支：`window.__ModuleLoader__.load({id, factory})`、
-  `ctx.slots.inject` / `ctx.slots.register`、以及 `conversation.input.right` 和 `[data-chat-flow*]` 标记在
-  0.1.5-rc.3 与 0.1.7-rc.1 上逐个比对过，签名一致。
+  ⚠️ **`latest` 比 `next` 旧**（0.1.5-rc.3 < 0.1.7-rc.1），所以通道顺序 ≠ 版本递增顺序。这正是 `engines.dsh` 必须写成**下限式** `>=0.1.5-rc.3` 的原因：写成按「最新那版」收窄的范围（比如 `>=0.1.7-rc.1`）会把 `latest` 关在门外；写成 `^0.1.5` 又会在 0.1.x 上永远不匹配 `0.1.7-rc.1`，把 `next` 也踢掉。
+  正式版发出来之后，位于版本号下方的通道一律被这个范围涵盖，不需要再动。
+- 插件代码里没有任何按版本分支：`window.__ModuleLoader__.load({id, factory})`、`ctx.slots.inject` / `ctx.slots.register`、`conversation.input.right`、以及 `[data-chat-flow*]` 标记，在 `latest`(0.1.5-rc.3) 与 `next`(0.1.7-rc.1) 上逐个比对过，签名一致。
 - 系统音量路由：macOS（`osascript`，内置）/ Linux（`pactl`）。其他平台该行置灰并显示原因。
 - 可选：[dsh-tts](https://github.com/GooDAnDReaDY/dsh-tts) —— 没装也能用，只是回退到浏览器语音。
 
