@@ -697,7 +697,7 @@ await test('drag right shows the hint while held; the click places the caret and
   harness.runtime.dispatch(instance, button, 'pointerdown', { clientX: 100, clientY: 700, pointerId: 1, button: 0 })
   harness.runtime.dispatch(instance, button, 'pointermove', { clientX: 140, clientY: 700, pointerId: 1 })
   equal(hint().style.display, 'block', 'the hint shows while dragging right')
-  includes(hint().textContent, '松开后点击选起点，再松开即朗读', 'stage 1 hint wording')
+  includes(hint().textContent, '松开-->点击朗读起点', 'stage 1 hint wording')
   equal(caret().style.display, 'none', 'no caret while dragging')
   equal(internals.state.reading, false, 'nothing is read yet')
 
@@ -883,30 +883,31 @@ await test('without dsh-tts the browser voice reads from the chosen offset', asy
   harness.dispose()
 })
 
-await test('the icon stays neutral unless playback is actually silent', async () => {
+await test('the icon never uses a red muted state', async () => {
   const harness = createHarness({ tts: false })
   const { instance, document, internals } = harness
   const button = () => document.querySelector('#mount-right button')
   const colour = () => button().style.color
-  // jsdom echoes colours as written, browsers normalise to rgb(): accept both
-  const isRed = (value) => /#e5484d|229,\s*72,\s*77/i.test(String(value))
+  const isRed = (value) => /#e5484d|#e5484e|229,\s*72,\s*77/i.test(String(value))
 
-  // idle + muted page volume: the icon must NOT look broken
+  // idle, muted page volume: neutral
   internals.state.pageMuted = true
   harness.runtime.render(instance)
-  assert(!isRed(colour()), `idle muted icon stays neutral (got ${colour()})`)
+  assert(!isRed(colour()), `idle muted icon is not red (got ${colour()})`)
 
-  // reading + muted: now red is meaningful (you pressed play and hear nothing)
+  // reading, muted page volume: still not red — mute belongs to the mixer
   internals.state.reading = true
   harness.runtime.render(instance)
-  assert(isRed(colour()), `silent playback turns the icon red (got ${colour()})`)
-  harness.runtime.dispatch(instance, button(), 'pointerenter', {})
-  includes(document.querySelector('.sh-vk-tip').textContent, '页内音量已静音', 'and the bubble explains why')
+  assert(!isRed(colour()), `reading while muted is still not red (got ${colour()})`)
 
-  // reading + not muted: the normal reading colour
+  // the slash is gone from every icon variant
+  const markup = button().innerHTML
+  assert(!/<line\b/i.test(markup), 'no slash <line> is drawn in the icon')
+  assert(/<path/i.test(markup), 'the speaker is still drawn with paths')
+
   internals.state.pageMuted = false
   harness.runtime.render(instance)
-  assert(!isRed(colour()), 'audible playback is not red')
+  assert(!isRed(colour()), 'and it stays non-red when audible')
   harness.dispose()
 })
 
@@ -924,14 +925,14 @@ await test('the icon hover bubble uses the drag hint styling, not a native toolt
   equal(tip.textContent, '点击朗读；上滑调音量；右拖选起点', 'hover wording')
   const css = document.getElementById('sh-vk-style').textContent
   includes(css, '.sh-vk-hint, .sh-vk-tip', 'the bubble shares the hint stylesheet')
-  includes(css, 'color: #f5a524', 'and the drag hint colour')
+  includes(css, 'color: #c2410c', 'and the drag hint colour')
   harness.runtime.dispatch(instance, button, 'pointerleave', {})
   equal(tip.style.display, 'none', 'and hides when the pointer leaves')
 
   // "停止朗读" is the same bubble while reading
   internals.state.reading = true
   harness.runtime.dispatch(instance, button, 'pointerenter', {})
-  equal(document.querySelector('.sh-vk-tip').textContent, '停止朗读', 'the same bubble shows the stop wording')
+  equal(document.querySelector('.sh-vk-tip').textContent, '点击停止', 'the same bubble shows the stop wording')
   harness.dispose()
 })
 
